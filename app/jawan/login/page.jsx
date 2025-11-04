@@ -2,24 +2,26 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "../context/UserContext"; // Import Context
 
 export default function JawanLogin() {
   const [credentials, setCredentials] = useState({ id: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
+  const { loginUser } = useUser(); 
 
-  // 🔹 Auto redirect if already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const res = await fetch("/api/auth/verify", {
           method: "GET",
-          credentials: "include", // Important to send cookies
+          credentials: "include",
         });
         const data = await res.json();
 
         if (data.loggedIn && data.user?.role === "jawan") {
+          loginUser(data.user); // store user in context
           router.push(
             `/jawan/dashboard?name=${data.user.username}&id=${data.user.id}`
           );
@@ -33,7 +35,7 @@ export default function JawanLogin() {
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, loginUser]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -60,6 +62,7 @@ export default function JawanLogin() {
       const data = await res.json();
 
       if (data.success) {
+        loginUser(data.user); 
         alert("✅ Login successful!");
         router.push(
           `/jawan/dashboard?name=${encodeURIComponent(
