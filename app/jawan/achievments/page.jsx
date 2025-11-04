@@ -22,15 +22,16 @@ const AchievementPage = () => {
     if (jawanId) fetchAchievements();
   }, [jawanId]);
 
+  // ✅ Fetch Achievements (no need for token in headers)
   const fetchAchievements = async () => {
     try {
-      const token = localStorage.getItem("token"); // JWT token
-      const res = await fetch("/api/jawan/achievement/viewachievement", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch("/api/jawan/achievement/viewachievment", {
+        method: "GET",
+        credentials: "include", // Important to send cookies
       });
+
       const data = await res.json();
+
       if (data.success) {
         setAchievements(data.achievements);
       } else {
@@ -42,13 +43,12 @@ const AchievementPage = () => {
     }
   };
 
+  // ✅ Add Achievement
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
 
+    try {
       const formData = new FormData();
-      formData.append("officerId", jawanId);
       formData.append("title", title);
       formData.append("description", description);
       formData.append("date", dateOfIssue);
@@ -59,13 +59,12 @@ const AchievementPage = () => {
 
       const res = await fetch("/api/jawan/achievement", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
+        credentials: "include", // Send cookies automatically
       });
 
       const data = await res.json();
+
       if (data.success) {
         setStatusMessage("✅ Achievement added successfully!");
         setTitle("");
@@ -75,7 +74,7 @@ const AchievementPage = () => {
         setAwardedBy("");
         setLocation("");
         setRemarks("");
-        fetchAchievements(); // refresh
+        fetchAchievements();
       } else {
         setStatusMessage(data.error || "❌ Failed to add achievement");
       }
@@ -88,8 +87,16 @@ const AchievementPage = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Add Achievement</h2>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <input type="text" value={jawanId} readOnly className="bg-gray-200 p-2" />
+        {jawanId && (
+          <input
+            type="text"
+            value={jawanId}
+            readOnly
+            className="bg-gray-200 p-2"
+          />
+        )}
         <input
           type="text"
           placeholder="Title"
@@ -114,8 +121,9 @@ const AchievementPage = () => {
         />
         <input
           type="file"
+          accept="image/*"
           onChange={(e) => setCertificateImage(e.target.files[0])}
-          className="p-2"
+          className="p-2 border"
         />
         <input
           type="text"
@@ -138,10 +146,14 @@ const AchievementPage = () => {
           onChange={(e) => setRemarks(e.target.value)}
           className="p-2 border"
         />
-        <button type="submit" className="bg-blue-600 text-white p-2 mt-2">
+        <button
+          type="submit"
+          className="bg-blue-600 text-white p-2 mt-2 hover:bg-blue-700 transition"
+        >
           Submit
         </button>
       </form>
+
       {statusMessage && <p className="mt-2">{statusMessage}</p>}
 
       <hr className="my-4" />
@@ -152,16 +164,30 @@ const AchievementPage = () => {
       ) : (
         <ul>
           {achievements.map((ach, index) => (
-            <li key={index} className="mb-4">
-              <strong>{ach.title}</strong> - {new Date(ach.date).toLocaleDateString()}
+            <li key={index} className="mb-4 border-b pb-2">
+              <strong>{ach.title}</strong> —{" "}
+              {new Date(ach.date).toLocaleDateString()}
               {ach.description && <p>{ach.description}</p>}
-              {ach.awardedBy && <p><strong>Awarded By:</strong> {ach.awardedBy}</p>}
-              {ach.remarks && <p><strong>Remarks:</strong> {ach.remarks}</p>}
+              {ach.awardedBy && (
+                <p>
+                  <strong>Awarded By:</strong> {ach.awardedBy}
+                </p>
+              )}
+              {ach.location && (
+                <p>
+                  <strong>Location:</strong> {ach.location}
+                </p>
+              )}
+              {ach.remarks && (
+                <p>
+                  <strong>Remarks:</strong> {ach.remarks}
+                </p>
+              )}
               {ach.certificateImage && (
                 <img
                   src={ach.certificateImage}
                   alt="Certificate"
-                  style={{ maxWidth: "200px", marginTop: "0.5rem" }}
+                  className="mt-2 max-w-[200px] rounded shadow"
                 />
               )}
             </li>

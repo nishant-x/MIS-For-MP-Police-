@@ -1,11 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function JawanLogin() {
   const [credentials, setCredentials] = useState({ id: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
+
+  // 🔹 Auto redirect if already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/auth/verify", {
+          method: "GET",
+          credentials: "include", // Important to send cookies
+        });
+        const data = await res.json();
+
+        if (data.loggedIn && data.user?.role === "jawan") {
+          router.push(
+            `/jawan/dashboard?name=${data.user.username}&id=${data.user.id}`
+          );
+        } else {
+          setCheckingAuth(false);
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        setCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -16,9 +44,11 @@ export default function JawanLogin() {
     e.preventDefault();
 
     if (!credentials.id || !credentials.password) {
-      alert("Please fill all fields");
+      alert("Please fill in all fields");
       return;
     }
+
+    setLoading(true);
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -29,19 +59,31 @@ export default function JawanLogin() {
 
       const data = await res.json();
 
-      console.log(data)
-
-      if (res.ok) {
-        alert(data.message);
-        router.push(`/jawan/dashboard?name=${data?.user?.username}&id=${data?.user?.id}`); 
+      if (data.success) {
+        alert("✅ Login successful!");
+        router.push(
+          `/jawan/dashboard?name=${encodeURIComponent(
+            data.user.username
+          )}&id=${data.user.id}`
+        );
       } else {
-        alert(data.error);
+        alert(`❌ ${data.error || "Invalid credentials"}`);
       }
     } catch (err) {
-      console.error(err);
-      alert("Something went wrong");
+      console.error("Login Error:", err);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600 text-lg font-medium">Checking session...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -79,19 +121,23 @@ export default function JawanLogin() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+          disabled={loading}
+          className={`w-full py-2 rounded-md text-white transition ${
+            loading
+              ? "bg-blue-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </button>
 
         <button
-          type="button" // Important! prevent form submission
+          type="button"
           className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition mt-2"
           onClick={() => setCredentials({ id: "nishant", password: "12345678" })}
         >
-          Autofill
+          Autofill Demo
         </button>
-
       </form>
     </div>
   );
